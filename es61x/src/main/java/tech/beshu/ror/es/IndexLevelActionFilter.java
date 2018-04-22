@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.gson.Gson;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -41,16 +42,19 @@ import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.FilterTransient;
+import tech.beshu.ror.settings.BlockSettings;
 
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -59,9 +63,9 @@ import java.util.concurrent.atomic.AtomicReference;
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
 
+  private static final Gson gson = new Gson();
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
-
   private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
@@ -176,7 +180,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
 
       @Override
-      public void onAllow(Object blockExitResult) {
+      public void onAllow(Value.VariableResolver rc, Object blockExitResult) {
 
         boolean hasProceeded = false;
         try {
@@ -186,8 +190,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           if (acl.involvesFilter()) {
             if (request instanceof SearchRequest) {
               logger.debug("ACL involves filters, will disable request cache for SearchRequest");
-
-              System.out.println("SEARCH REQUEST WILL DISABLE CACHE");
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
@@ -199,13 +201,31 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
           if (blockExitResult instanceof BlockExitResult) {
             BlockExitResult ber = (BlockExitResult) blockExitResult;
-            Optional<String> filter = ber.getBlock().getFilter();
+            BlockSettings blockSettings = ber.getBlock().getSettings();
+
+            Optional<String> filter = blockSettings.getFilter(rc);
+
+            Optional<Set<String>> fields = blockSettings.getFields();
+            if (fields.isPresent() && !fields.get().isEmpty()) {
+              String fieldsSer = gson.toJson(fields.get());
+              if (fieldsSer == null) {
+                logger.error("Error while serializing fields transient");
+              }
+              else {
+                threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, fieldsSer);
+              }
+            }
+            else {
+              threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, null);
+            }
+
             if (filter.isPresent()) {
-              String encodedUser = FilterTransient.createFromFilter(filter.get()).serialize();
-              if (encodedUser == null)
-                logger.error("Error while serializing user transient");
+              String filterSer = FilterTransient.createFromFilter(filter.get()).serialize();
+              if (filterSer == null) {
+                logger.error("Error while serializing filter transient");
+              }
               if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
-                threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, encodedUser);
+                threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, filterSer);
               }
             }
           }

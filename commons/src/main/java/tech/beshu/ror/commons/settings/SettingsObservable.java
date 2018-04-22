@@ -32,7 +32,6 @@ abstract public class SettingsObservable extends Observable {
   protected RawSettings current;
   private boolean printedInfo = false;
 
-
   public void updateSettings(RawSettings newSettings) {
     this.current = newSettings;
     setChanged();
@@ -44,7 +43,6 @@ abstract public class SettingsObservable extends Observable {
   public RawSettings getCurrent() {
     return current;
   }
-
 
   protected abstract boolean isClusterReady();
 
@@ -74,7 +72,7 @@ abstract public class SettingsObservable extends Observable {
       if (SETTINGS_NOT_FOUND_MESSAGE.equals(t.getMessage())) {
         if (!printedInfo) {
           getLogger().info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using the local YAML file. " +
-                             "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
+              "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
         }
         printedInfo = true;
       }

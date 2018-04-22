@@ -39,7 +39,7 @@ public class BasicAuthUtilsTests {
     assertTrue(user.equals(basicAuth.get().getUserName()));
     assertTrue(passwd.equals(basicAuth.get().getPassword()));
   }
-  
+
   @Test
   public void basicAuthInvalidTest() {
     String user = "admin";

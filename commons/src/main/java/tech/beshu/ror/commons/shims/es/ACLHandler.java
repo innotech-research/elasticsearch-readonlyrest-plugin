@@ -17,10 +17,12 @@
 
 package tech.beshu.ror.commons.shims.es;
 
+import tech.beshu.ror.commons.domain.Value;
+
 public interface ACLHandler {
   void onForbidden();
 
-  void onAllow(Object blockExitResult);
+  void onAllow(Value.VariableResolver  rc, Object blockExitResult);
 
   boolean isNotFound(Throwable t);
 

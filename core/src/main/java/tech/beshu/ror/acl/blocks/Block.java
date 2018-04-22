@@ -101,8 +101,8 @@ public class Block {
     return settings.getVerbosity();
   }
   
-  public Optional<String> getFilter() {
-	  return settings.getFilter();
+  public BlockSettings getSettings() {
+	  return settings;
   }
 
   public boolean isAuthHeaderAccepted() {

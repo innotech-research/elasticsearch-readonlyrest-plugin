@@ -34,6 +34,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
@@ -53,6 +54,7 @@ import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -211,13 +213,20 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
           if (blockExitResult instanceof BlockExitResult) {
             BlockExitResult ber = (BlockExitResult) blockExitResult;
-            Optional<String> filter = ber.getBlock().getFilter();
+            Optional<String> filter = ber.getBlock().getSettings().getFilter();
             if (filter.isPresent()) {
               String encodedUser = FilterTransient.createFromFilter(filter.get()).serialize();
               if (encodedUser == null)
                 logger.error("Error while serializing user transient");
               if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
                 threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, encodedUser);
+              }
+            }
+            Optional<Set<String>> fields = ber.getBlock().getSettings().getFields();
+            if(fields.isPresent()){
+              String jsonFields = JsonXContent.contentBuilder().startObject().array("fields", fields.get()).endObject().string();
+              if (threadPool.getThreadContext().getHeader(Constants.FIELDS_TRANSIENT) == null) {
+                threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, jsonFields);
               }
             }
           }

@@ -25,6 +25,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
+import tech.beshu.ror.acl.domain.Value;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.ResponseContext.FinalState;
@@ -95,7 +96,7 @@ public class ACL {
                    .collect(Collectors.toList())
     );
 
-    this.involvesFilter = blocks.stream().filter(b -> b.getFilter().isPresent()).findFirst().isPresent();
+    this.involvesFilter = blocks.stream().filter(b -> b.getSettings().getFilter(null).isPresent()).findFirst().isPresent();
   }
 
   public static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
@@ -198,7 +199,7 @@ public class ACL {
 
           // MATCH AN ALLOW BLOCK
           if (BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
-            h.onAllow(result);
+            h.onAllow(rc, result);
             doLog(new ResponseContext(FinalState.ALLOWED, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
             return null;
           }
